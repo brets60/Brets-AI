@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 1. User Profiles
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // 2. Speaking Conversations & Messages
+    match /conversations/{conversationId} {
+      allow read, write: if isOwner(resource.data.userId) || (request.resource.data.userId == request.auth.uid);
+
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // 3. Smart Grammar Coach Corrections (Image 4 feedback cards)
+    match /corrections/{correctionId} {
+      allow read, write: if isOwner(resource.data.userId) || (request.resource.data.userId == request.auth.uid);
+    }
+
+    // 4. Learning Progress & Historical Assessment Scores (Image 5 multi-curve chart)
+    match /learning_progress/{progressId} {
+      allow read, write: if isOwner(resource.data.userId) || (request.resource.data.userId == request.auth.uid);
+    }
+
+    // 5. Personal Mistake Memory Bank
+    match /mistake_patterns/{patternId} {
+      allow read, write: if isOwner(resource.data.userId) || (request.resource.data.userId == request.auth.uid);
+    }
+
+    // 6. Subscriptions (₱199/month Pro)
+    match /subscriptions/{subscriptionId} {
+      allow read: if isOwner(resource.data.userId);
+      allow write: if false; // Only backend Cloud Functions can modify subscription status
+    }
+  }
+}
